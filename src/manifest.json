@@ -1,0 +1,31 @@
+{
+    "manifest_version": 3,
+    "name": "Link Generator for sosumi.ai",
+    "version": "1.0",
+    "description": "Copies Apple Developer documentation and HIG links as sosumi.ai links.",
+    "permissions": [
+        "clipboardWrite"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "https://developer.apple.com/documentation/*",
+                "https://developer.apple.com/design/human-interface-guidelines/*"
+            ],
+            "exclude_matches": [
+                "https://developer.apple.com/documentation"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "css": [
+                "styles.css"
+            ]
+        }
+    ],
+    "icons": {
+        "16": "icons/icon16.png",
+        "46": "icons/icon46.png",
+        "128": "icons/icon128.png"
+    }
+}
