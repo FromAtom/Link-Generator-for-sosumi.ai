@@ -77,7 +77,7 @@
         if (!container) return;
 
         const globalHeader = document.querySelector('.global-header');
-        const localNav = document.querySelector('.nav.documentation-nav, .nav--fullwidth-border, nav.nav');
+        const localNav = document.querySelector('.nav.documentation-nav, .nav--fullwidth-border, nav.nav, #localnav');
 
         let totalOffset = 12;
 
