@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Link Generator for sosumi.ai",
-    "version": "1.0",
+    "version": "1.1",
     "description": "Copies Apple Developer documentation and HIG links as sosumi.ai links.",
     "permissions": [
         "clipboardWrite"
