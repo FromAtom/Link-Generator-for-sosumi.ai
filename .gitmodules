@@ -1,0 +1,4 @@
+[submodule "sosumi.ai"]
+	path = sosumi.ai
+	url = https://github.com/NSHipster/sosumi.ai.git
+	branch = main

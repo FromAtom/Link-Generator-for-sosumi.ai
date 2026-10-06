@@ -10,7 +10,12 @@
         {
             "matches": [
                 "https://developer.apple.com/documentation/*",
-                "https://developer.apple.com/design/human-interface-guidelines/*"
+                "https://developer.apple.com/design/human-interface-guidelines",
+                "https://developer.apple.com/design/human-interface-guidelines/*",
+                "https://developer.apple.com/videos/play/*",
+                "https://developer.apple.com/*/videos/play/*",
+                "https://*/documentation/*",
+                "https://*/*/documentation/*"
             ],
             "exclude_matches": [
                 "https://developer.apple.com/documentation"

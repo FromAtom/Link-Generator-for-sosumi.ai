@@ -1,12 +1,83 @@
 (() => {
     let initialUpdateDone = false;
+    // URL to copy for the current page, or null when sosumi.ai cannot serve it.
+    let sosumiUrl = null;
+    // Pathname that sosumiUrl was resolved for (SPA navigation changes it without reload).
+    let checkedPath = null;
+
+    const jsonExists = async (url) => {
+        try {
+            const res = await fetch(url, { method: 'HEAD' });
+            return res.ok;
+        } catch {
+            return false;
+        }
+    };
+
+    // Mirrors the preconditions of sosumi.ai's routes (sosumi.ai/src/index.ts):
+    // each branch checks the same JSON/DOM that sosumi.ai fetches for that route.
+    const resolveSosumiUrl = async () => {
+        const { hostname, origin } = window.location;
+        // sosumi.ai redirects trailing slashes and rejects fragments, so drop both (and the query).
+        const path = window.location.pathname.replace(/\/+$/, '');
+        let m;
+
+        if (hostname === 'developer.apple.com') {
+            // lib/reference/fetch.ts: framework roots use /index/<framework>, other pages <path>.json
+            if ((m = path.match(/^\/documentation\/(.+)$/))) {
+                const docPath = m[1];
+                const jsonUrl = docPath.includes('/')
+                    ? `/tutorials/data/documentation/${docPath}.json`
+                    : `/tutorials/data/index/${docPath}`;
+                return (await jsonExists(jsonUrl)) ? `https://sosumi.ai${path}` : null;
+            }
+            // lib/hig/fetch.ts
+            if (path === '/design/human-interface-guidelines') {
+                return (await jsonExists('/tutorials/data/index/design--human-interface-guidelines'))
+                    ? `https://sosumi.ai${path}`
+                    : null;
+            }
+            if ((m = path.match(/^\/design\/human-interface-guidelines\/(.+)$/))) {
+                return (await jsonExists(`/tutorials/data/design/human-interface-guidelines/${m[1]}.json`))
+                    ? `https://sosumi.ai${path}`
+                    : null;
+            }
+            // index.ts /videos/play/:collection/:id + lib/video: needs a #transcript-content section.
+            // sosumi.ai has no locale routes and always reads the English page, so localized pages
+            // (/jp/, /kr/, ...) map to the English URL and are checked against the English page.
+            if ((m = path.match(/^(\/[a-z-]+)?(\/videos\/play\/[a-z0-9-]+\/\d+)$/i))) {
+                const videoPath = m[2];
+                let hasTranscript;
+                if (m[1]) {
+                    try {
+                        const res = await fetch(`${videoPath}/`);
+                        hasTranscript = res.ok && /<section[^>]*id=["']transcript-content["']/i.test(await res.text());
+                    } catch {
+                        hasTranscript = false;
+                    }
+                } else {
+                    hasTranscript = !!document.getElementById('transcript-content');
+                }
+                return hasTranscript ? `https://sosumi.ai${videoPath}` : null;
+            }
+            return null;
+        }
+
+        // External Swift-DocC (lib/external/fetch.ts buildExternalDocCJsonUrl): <base>/data/documentation/....json
+        if ((m = path.match(/^(.*?)(\/documentation\/.+)$/))) {
+            return (await jsonExists(`${m[1]}/data${m[2]}.json`))
+                ? `https://sosumi.ai/external/${origin}${path}`
+                : null;
+        }
+        return null;
+    };
 
     const updatePosition = () => {
         const container = document.getElementById('sosumi-container');
         if (!container) return;
 
         const globalHeader = document.querySelector('.global-header');
-        const localNav = document.querySelector('.nav.documentation-nav, .nav--fullwidth-border, nav.nav');
+        const localNav = document.querySelector('.nav.documentation-nav, .nav--fullwidth-border, nav.nav, #localnav');
 
         let totalOffset = 12;
 
@@ -64,8 +135,7 @@
 
         const copyBtn = container.querySelector('#sosumi-copy-button');
         copyBtn.addEventListener('click', async () => {
-            const currentUrl = window.location.href;
-            const sosumiUrl = currentUrl.replace('developer.apple.com', 'sosumi.ai');
+            if (!sosumiUrl) return;
 
             try {
                 await navigator.clipboard.writeText(sosumiUrl);
@@ -91,17 +161,39 @@
         });
     };
 
+    // Resolve availability for the current path, then show or hide the button accordingly.
+    const refresh = async () => {
+        const path = window.location.pathname;
+        checkedPath = path;
+        sosumiUrl = null;
+        document.getElementById('sosumi-container')?.remove();
+
+        const url = await resolveSosumiUrl();
+        if (checkedPath !== path) return; // navigated away while checking
+        sosumiUrl = url;
+        if (sosumiUrl) {
+            initialUpdateDone = false;
+            injectButton();
+        }
+    };
+
     window.addEventListener('scroll', updatePosition, { passive: true });
     window.addEventListener('resize', updatePosition);
 
     // Wait for the entire page to load (including layouts) before showing
     if (document.readyState === 'complete') {
-        injectButton();
+        refresh();
     } else {
-        window.addEventListener('load', injectButton);
+        window.addEventListener('load', refresh);
     }
 
     const observer = new MutationObserver(() => {
+        if (checkedPath === null) return; // initial check not started yet
+        if (window.location.pathname !== checkedPath) {
+            refresh();
+            return;
+        }
+        if (!sosumiUrl) return;
         if (!document.getElementById('sosumi-container')) {
             initialUpdateDone = false; // Reset for potential re-injection
             injectButton();
